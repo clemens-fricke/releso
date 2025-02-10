@@ -187,6 +187,7 @@ class StepLogCallback(BaseCallback):
         self.actions = []  # Store actions
         self.observations = []  # Store observations
         self.rewards = []  # Optionally store rewards
+        self.previous_observations = []  # Store previous observations
 
     def _export(self) -> None:
         """Convert the step-wise information to a dataframe and export to csv."""
@@ -197,6 +198,7 @@ class StepLogCallback(BaseCallback):
                 "actions": self.actions,
                 "observations": self.observations,
                 "rewards": self.rewards,
+                # pre obs
             }
         )
         export_data_frame.index = self.timesteps
@@ -234,6 +236,8 @@ class StepLogCallback(BaseCallback):
 
         # Check if the environment has completed an episode
         if any(dones):
+
+            self.observations[-1] = [info["terminal_observation"] for info in self.locals["infos"]]
             # If the update is supposed to be performed after an episode has
             # been completed ...
             if self.update_n_episodes == 0:
