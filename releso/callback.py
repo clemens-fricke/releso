@@ -185,9 +185,9 @@ class StepLogCallback(BaseCallback):
         self.episodes = []  # Store episode numbers
         self.timesteps = []  # Store step numbers
         self.actions = []  # Store actions
-        self.observations = []  # Store observations
+        self.prev_obs = []  # Store observations at the start of time step
+        self.new_obs = []  # Store observations after completion of time step
         self.rewards = []  # Optionally store rewards
-        self.previous_observations = []  # Store previous observations
 
     def _export(self) -> None:
         """Convert the step-wise information to a dataframe and export to csv."""
@@ -196,7 +196,8 @@ class StepLogCallback(BaseCallback):
             {
                 "episodes": self.episodes,
                 "actions": self.actions,
-                "observations": self.observations,
+                "prev_obs": self.prev_obs,
+                "new_obs": self.new_obs,
                 "rewards": self.rewards,
                 # pre obs
             }
@@ -222,22 +223,28 @@ class StepLogCallback(BaseCallback):
         """
         # Retrieve the step-wise information that we want to keep track of
         actions = self.locals["actions"]  # Agent's actions
-        observations = self.locals["new_obs"]  # Resulting observations
+        prev_obs = self.model._last_obs  # Old observation
+        new_obs = self.locals["new_obs"]  # New observations
         rewards = self.locals["rewards"]  # Rewards (optional)
 
         # Store actions, observations, and rewards
         self.episodes.append(self.current_episode)
         self.timesteps.append(self.num_timesteps)
         self.actions.append(actions)
-        self.observations.append(observations)
+        self.prev_obs.append(prev_obs)
+        self.new_obs.append(new_obs)
         self.rewards.append(rewards)
 
         dones = self.locals["dones"]
 
         # Check if the environment has completed an episode
         if any(dones):
-
-            self.observations[-1] = [info["terminal_observation"] for info in self.locals["infos"]]
+            # If the environment has completed an episode, locals["new_obs"]
+            # will already contain the observation AFTER a reset has been
+            # performed and not the original terminal observation with which the
+            # episode ended, so overwrite the entries with the true terminal
+            # observation
+            self.new_obs[-1] = [info["terminal_observation"] for info in self.locals["infos"]]
             # If the update is supposed to be performed after an episode has
             # been completed ...
             if self.update_n_episodes == 0:
